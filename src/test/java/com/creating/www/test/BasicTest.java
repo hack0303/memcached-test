@@ -19,8 +19,11 @@ import org.junit.Test;
 
 import net.spy.memcached.MemcachedClient;
 import net.spy.memcached.internal.OperationFuture;
-import net.spy.memcached.ops.Operation;
-
+/**
+ * 0
+ * 30days
+ * timestamp
+ * */
 public class BasicTest {
     static MemcachedClient memcachedc=null;
 	@BeforeClass
@@ -69,12 +72,11 @@ public class BasicTest {
 	@Test
 	public void testAdd() throws InterruptedException {
 		memcachedc.set("key_a",0,"1");
-		memcachedc.set("key_a",0,"2");
-		memcachedc.set("key_a",0,"3");
-		memcachedc.set("key_a",0,"4");	
+		memcachedc.add("key_a",0,"2");
 		String obj=(String) memcachedc.get("key_a");
 		assertNotNull(obj);
-		assertEquals("4",obj);
+		System.out.println(obj);
+		assertEquals("1",obj);
 	}
 	/**
 	 * override
@@ -82,13 +84,18 @@ public class BasicTest {
 	@Ignore
 	@Test
 	public void testReplace() throws InterruptedException {
-		memcachedc.set("key_a",0,"1");
-		memcachedc.set("key_a",0,"2");
-		memcachedc.set("key_a",0,"3");
-		memcachedc.set("key_a",0,"4");	
-		String obj=(String) memcachedc.get("key_a");
+		String key="key_a";
+		memcachedc.set(key,0,"1");
+		System.out.println(memcachedc.get(key));
+		
+		memcachedc.replace(key,0,"2");
+		String obj=(String) memcachedc.get(key);
 		assertNotNull(obj);
-		assertEquals("4",obj);
+		assertEquals("2",obj);
+		System.out.println(memcachedc.get(key));
+		//can effect after existing some value associalate key
+		memcachedc.replace("key_b",0,"hahaha");
+		assertNull(memcachedc.get("key_b"));
 	}
 	/**
 	 * override
@@ -96,13 +103,9 @@ public class BasicTest {
 	@Ignore
 	@Test
 	public void testAppend() throws InterruptedException {
-		memcachedc.set("key_a",0,"1");
-		memcachedc.set("key_a",0,"2");
-		memcachedc.set("key_a",0,"3");
-		memcachedc.set("key_a",0,"4");	
-		String obj=(String) memcachedc.get("key_a");
-		assertNotNull(obj);
-		assertEquals("4",obj);
+	    String key="key_a";
+	    memcachedc.append(memcachedc.gets(key).getCas(), key,"hiasdas");
+	    System.out.println(memcachedc.get("key_a"));
 	}
 	/**
 	 * Prepend
@@ -110,10 +113,15 @@ public class BasicTest {
 	@Ignore
 	@Test
 	public void testPrepend() throws InterruptedException {
-		memcachedc.set("key_a",0,"1");
-		String obj=(String) memcachedc.get("key_a");
+		String key="key_a";
+		String begin="begin";
+		memcachedc.set(key,0,begin);
+		String prepText="prepend";
+		memcachedc.prepend(memcachedc.gets(key).getCas(),key,prepText);
+		String obj=(String) memcachedc.get("key_a");		
 		assertNotNull(obj);
-		assertEquals("4",obj);
+		assertEquals(prepText+begin,obj);
+		System.out.println(obj);
 	}
 	/**
 	 * override
@@ -129,15 +137,15 @@ public class BasicTest {
 		assertNotNull(obj);
 		assertEquals("4",obj);
 	}
-	@Ignore
+	//@Ignore
 	@Test
 	public void testSTAS() throws InterruptedException {
-		Map<SocketAddress,Map<String,String>> m=memcachedc.getStats("key_a");
+		Map<SocketAddress,Map<String,String>> m=memcachedc.getStats();
 		for(Map.Entry<SocketAddress,Map<String,String>> x:m.entrySet()) {
 			String addr=x.getKey().toString();
 			Map<String,String> kvs=x.getValue();
 			for(Map.Entry<String,String> e:kvs.entrySet())
-			System.out.printf("addr:%s,key:%s,val:%s",addr,e.getKey(),e.getValue());
+			System.out.printf("addr:%s,key:%s,val:%s%n",addr,e.getKey(),e.getValue());
 		}
 	}
 	@Ignore
@@ -244,7 +252,7 @@ public class BasicTest {
 	 * flushAll(int)
 	 * @throws ExecutionException 
 	 * */
-	//@Ignore
+	@Ignore
 	@Test
 	public void testFlushAllI() throws InterruptedException, ExecutionException {
 		memcachedc.set("key_a",0,"hahaha");
@@ -263,5 +271,17 @@ public class BasicTest {
 		assertNull(memcachedc.get("key_c"));
 		assertNull(memcachedc.get("key_d"));
 	}
-	
+	/**
+	 * override
+	 * */
+	@Ignore
+	@Test
+	public void testGet() throws InterruptedException {
+		String key="key_a";
+		memcachedc.set(key, 0, "hhhaasd1");
+		memcachedc.set(key, 0, "hhhaasd2");
+		memcachedc.set(key, 0, "hhhaasd3");
+		System.out.println(memcachedc.get(key));
+		
+	}
 }
