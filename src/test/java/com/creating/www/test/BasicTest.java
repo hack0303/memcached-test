@@ -7,6 +7,7 @@ import java.net.SocketAddress;
 import java.util.Map;
 import java.util.concurrent.BrokenBarrierException;
 import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
 import org.junit.After;
@@ -17,6 +18,8 @@ import org.junit.Ignore;
 import org.junit.Test;
 
 import net.spy.memcached.MemcachedClient;
+import net.spy.memcached.internal.OperationFuture;
+import net.spy.memcached.ops.Operation;
 
 public class BasicTest {
     static MemcachedClient memcachedc=null;
@@ -102,15 +105,12 @@ public class BasicTest {
 		assertEquals("4",obj);
 	}
 	/**
-	 * override
+	 * Prepend
 	 * */
 	@Ignore
 	@Test
 	public void testPrepend() throws InterruptedException {
 		memcachedc.set("key_a",0,"1");
-		memcachedc.set("key_a",0,"2");
-		memcachedc.set("key_a",0,"3");
-		memcachedc.set("key_a",0,"4");	
 		String obj=(String) memcachedc.get("key_a");
 		assertNotNull(obj);
 		assertEquals("4",obj);
@@ -152,12 +152,13 @@ public class BasicTest {
         memcachedc.decr(key,1);
         System.out.println(memcachedc.get(key).toString());
 	}
+	@Ignore
 	@Test
 	public void testIncrAndDecrConcurrency() throws InterruptedException {
 		String key="key_a";
 		//reset key_a to 4
 		memcachedc.set(key,0,"4");
-		System.out.println("重置key_a为4");
+		System.out.println("reset key_a to 4");
 		Object origin=memcachedc.get(key);
        assertNotNull(origin);
         System.out.println(origin.toString());
@@ -197,4 +198,70 @@ public class BasicTest {
 			this.memcachedc.incr(this.key,this.slot);
 		}
 	}
+	/**
+	 * delete(String,int)
+	 * @throws ExecutionException 
+	 * */
+	@Ignore
+	@Test
+	public void testDeleteSI() throws InterruptedException, ExecutionException {
+		memcachedc.set("key_b",0,"hahaha");
+		//这个指定时间值，没卵用了
+         OperationFuture<Boolean> op=memcachedc.delete("key_b",10);
+	     assertTrue(op.get().booleanValue());
+	    assertNotNull( memcachedc.get("key_b"));
+	}
+	/**
+	 * delete(String)
+	 * @throws ExecutionException 
+	 * */
+	@Ignore
+	@Test
+	public void testDeleteS() throws InterruptedException, ExecutionException {
+		memcachedc.set("key_b",0,"hahaha");
+         OperationFuture<Boolean> op=memcachedc.delete("key_b");
+	     assertTrue(op.get().booleanValue());
+	    assertNull( memcachedc.get("key_b"));
+	}
+	/**
+	 * flushAll()
+	 * @throws ExecutionException 
+	 * */
+	@Ignore
+	@Test
+	public void testFlushAll() throws InterruptedException, ExecutionException {
+		memcachedc.set("key_a",0,"hahaha");
+		memcachedc.set("key_b",0,"hahaha");
+		memcachedc.set("key_c",0,"hahaha");
+		memcachedc.set("key_d",0,"hahaha");
+		memcachedc.flush();
+		assertNull(memcachedc.get("key_a"));
+		assertNull(memcachedc.get("key_b"));
+		assertNull(memcachedc.get("key_c"));
+		assertNull(memcachedc.get("key_d"));
+	}
+	/**
+	 * flushAll(int)
+	 * @throws ExecutionException 
+	 * */
+	//@Ignore
+	@Test
+	public void testFlushAllI() throws InterruptedException, ExecutionException {
+		memcachedc.set("key_a",0,"hahaha");
+		memcachedc.set("key_b",0,"hahaha");
+		memcachedc.set("key_c",0,"hahaha");
+		memcachedc.set("key_d",0,"hahaha");
+		//application delay time
+		memcachedc.flush(5);
+		assertNotNull(memcachedc.get("key_a"));
+		assertNotNull(memcachedc.get("key_b"));
+		assertNotNull(memcachedc.get("key_c"));
+		assertNotNull(memcachedc.get("key_d"));
+		TimeUnit.SECONDS.sleep(5);
+		assertNull(memcachedc.get("key_a"));
+		assertNull(memcachedc.get("key_b"));
+		assertNull(memcachedc.get("key_c"));
+		assertNull(memcachedc.get("key_d"));
+	}
+	
 }
