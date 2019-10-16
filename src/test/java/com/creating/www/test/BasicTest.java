@@ -2,6 +2,7 @@ package com.creating.www.test;
 
 import static org.junit.Assert.*;
 
+import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.util.Map;
@@ -17,18 +18,20 @@ import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Test;
 
+import net.spy.memcached.CASValue;
 import net.spy.memcached.MemcachedClient;
 import net.spy.memcached.internal.OperationFuture;
 /**
  * 0
  * 30days
  * timestamp
+ * cas use version control
  * */
 public class BasicTest {
     static MemcachedClient memcachedc=null;
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
-	memcachedc=new MemcachedClient(new InetSocketAddress("192.168.159.142",11211));
+	memcachedc=new MemcachedClient(new InetSocketAddress("192.168.159.146",11211));
 	}
 
 	@AfterClass
@@ -50,6 +53,13 @@ public class BasicTest {
 		memcachedc.get("key_a");
 		TimeUnit.SECONDS.sleep(6);
 		assertNull(memcachedc.get("key_a"));
+	}
+	@Ignore
+	@Test
+	public void testGets() throws InterruptedException {
+		CASValue<Object> casv=memcachedc.gets("key_a");
+		//对象版本号
+		System.out.println(casv.getCas());
 	}
 	/**
 	 * override
@@ -123,21 +133,71 @@ public class BasicTest {
 		assertEquals(prepText+begin,obj);
 		System.out.println(obj);
 	}
+	@Ignore
+	@Test
+	public void testCAS1() throws InterruptedException {
+		String key="key_a";
+		memcachedc.set(key,0,"1");
+		long casId=memcachedc.gets(key).getCas();
+		//other dosometing
+		memcachedc.cas(key,memcachedc.gets(key).getCas(),"51");
+		memcachedc.cas(key, casId, "52");
+		String obj=(String) memcachedc.get(key);
+		assertNotNull(obj);
+		System.out.printf("want:%s,actual:%s%n","52","51");
+		assertEquals("51",obj);
+	}
+	@Test
+	public void testCAS1_() throws InterruptedException {
+		String key="key_a";
+		memcachedc.set(key,0,"1");
+		long casId=memcachedc.gets(key).getCas();
+		//other dosometing
+		//memcachedc.cas(key,memcachedc.gets(key).getCas(),"51");
+		//please understand by yourself,because my english do not support me to explain it,sorry
+		System.out.println("other server turn,please do something");
+		TimeUnit.SECONDS.sleep(20);
+		System.out.println("my turn");
+		memcachedc.cas(key, casId, "52");
+		String obj=(String) memcachedc.get(key);
+		assertNotNull(obj);
+		System.out.printf("want:%s,actual:%s%n","52","51");
+		assertEquals("51",obj);
+	}
 	/**
 	 * override
+	 * pass
 	 * */
 	@Ignore
 	@Test
-	public void testCAS() throws InterruptedException {
-		memcachedc.set("key_a",0,"1");
-		memcachedc.set("key_a",0,"2");
-		memcachedc.set("key_a",0,"3");
-		memcachedc.set("key_a",0,"4");	
-		String obj=(String) memcachedc.get("key_a");
+	public void testCAS2() throws InterruptedException {
+		String key="key_a";
+		memcachedc.set(key,0,"1");
+		System.out.println(memcachedc.get(key));
+		new Thread(new Runnable() {
+			
+			@Override
+			public void run() {
+				try {
+				MemcachedClient memcachedc=new MemcachedClient(new InetSocketAddress("192.168.159.146",11211));
+				//memcachedc.set("key_a",0,4);
+				memcachedc.cas("key_a",memcachedc.gets("key_a").getCas(),4);
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+				
+			}
+		}).start();
+		
+		TimeUnit.SECONDS.sleep(10);
+		System.out.println("---开始---");
+		memcachedc.cas(key,memcachedc.gets(key).getCas(),"51");
+		String obj=(String) memcachedc.get(key);
 		assertNotNull(obj);
-		assertEquals("4",obj);
+		assertEquals("51",obj);
 	}
-	//@Ignore
+	@Ignore
 	@Test
 	public void testSTAS() throws InterruptedException {
 		Map<SocketAddress,Map<String,String>> m=memcachedc.getStats();
